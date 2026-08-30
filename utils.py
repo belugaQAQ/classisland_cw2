@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import os
 import platform
@@ -28,43 +26,7 @@ def _requests():
 
 
 DISTRIBUTION_API_URL = "https://distribution.classisland.tech/api/v1/public/distributions/web"
-GITHUB_RELEASE_API_URL = "https://api.github.com/repos/ClassIsland/ClassIsland/releases/tags/{version}"
 VERSION_FILE_NAME = ".classisland-version"
-
-
-def _parse_checksum(expected: str) -> tuple[str, bytes]:
-    normalized = "".join(expected.split())
-    if ":" in normalized:
-        algorithm, normalized = normalized.split(":", 1)
-        algorithm = algorithm.casefold()
-    else:
-        algorithm = "sha512"
-    if algorithm not in {"sha256", "sha512"}:
-        raise ValueError(f"Unsupported checksum algorithm: {algorithm}")
-    expected_length = hashlib.new(algorithm).digest_size * 2
-    if not re.fullmatch(rf"[0-9a-fA-F]{{{expected_length}}}", normalized):
-        raise ValueError(f"Invalid {algorithm.upper()} checksum")
-    return algorithm, bytes.fromhex(normalized)
-
-
-def _github_asset_checksum(version: str, artifact_name: str) -> str:
-    response = _requests().get(
-        GITHUB_RELEASE_API_URL.format(version=version),
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "ClassWidgets"},
-        timeout=30,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    assets = payload.get("assets", []) if isinstance(payload, dict) else []
-    for asset in assets:
-        if isinstance(asset, dict) and asset.get("name") == artifact_name:
-            digest = asset.get("digest")
-            if isinstance(digest, str):
-                _parse_checksum(digest)
-                return digest
-            break
-    raise RuntimeError(f"ClassIsland release has no checksum for {artifact_name}.")
-
 
 class DownloadCancelled(Exception):
     """Raised when the installer is asked to stop an in-progress download."""
@@ -166,7 +128,7 @@ def _sub_channel_from_artifact(artifact_name: str) -> str:
     return match.group(1)
 
 
-def _get_download_info(version: str, artifact_name: str) -> tuple[str, str]:
+def _get_download_info(version: str, artifact_name: str) -> str:
     latest_version, version_id = _get_latest_release()
     if latest_version != version:
         raise RuntimeError("ClassIsland release metadata changed while downloading.")
@@ -183,10 +145,9 @@ def _get_download_info(version: str, artifact_name: str) -> tuple[str, str]:
         url = metadata["archiveUrl"]
         if not isinstance(url, str) or not url:
             raise TypeError("archiveUrl must be a non-empty string")
-        checksum = _github_asset_checksum(version, artifact_name)
-    except (KeyError, TypeError, ValueError) as error:
+    except (KeyError, TypeError) as error:
         raise RuntimeError("ClassIsland download metadata is incomplete or invalid.") from error
-    return url, checksum
+    return url
 
 
 def download_file(
@@ -214,16 +175,6 @@ def download_file(
                         progress_callback(min(99, downloaded * 100 // total))
 
 
-def verify_file_checksum(file_path: Path, expected: str) -> bool:
-    try:
-        algorithm, expected_digest = _parse_checksum(expected)
-        digest = hashlib.new(algorithm)
-        with file_path.open("rb") as file:
-            for chunk in iter(lambda: file.read(1024 * 1024), b""):
-                digest.update(chunk)
-    except (OSError, AttributeError, TypeError, ValueError):
-        return False
-    return hmac.compare_digest(digest.digest(), expected_digest)
 
 
 def _archive_member_path(root: Path, member_name: str) -> tuple[Path, bool]:
@@ -395,7 +346,7 @@ def download_and_extract_classisland(
             progress_callback(100)
             return launcher
 
-    url, expected_hash = _get_download_info(version, artifact_name)
+    url = _get_download_info(version, artifact_name)
     suffix = Path(artifact_name).suffix
     fd, temporary_name = tempfile.mkstemp(
         prefix=f".{Path(artifact_name).stem}-", suffix=suffix, dir=install_path.parent
@@ -405,8 +356,6 @@ def download_and_extract_classisland(
     try:
         download_file(url, archive_path, progress_callback, should_cancel)
         _check_cancelled(should_cancel)
-        if not verify_file_checksum(archive_path, expected_hash):
-            raise RuntimeError("The downloaded ClassIsland archive failed checksum verification.")
 
         if artifact_name.endswith(".zip"):
             launcher = _replace_folder_installation(
