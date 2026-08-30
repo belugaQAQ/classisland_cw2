@@ -1,0 +1,14 @@
+[project]
+name = "com.classwidgets.classisland"
+version = "1.0.2"
+description = "ClassIsland 是一款适用于班级多媒体屏幕的课表信息显示工具。"
+authors = [
+    {name = "ClassIsBand"},
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["class-widgets-sdk"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
