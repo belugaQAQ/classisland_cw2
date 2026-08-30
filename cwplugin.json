@@ -2,13 +2,13 @@
     "id": "com.classwidgets.classisland",
     "name": "ClassIsland",
     "description": "ClassIsland 是一款适用于班级多媒体屏幕的课表信息显示工具。",
-    "version": "1.1.1",
+    "version": "1.0.0",
     "api_version": ">=0.6.0",
     "entry": "main.py",
-    "author": "ClassIsland",
+    "author": "ClassIsBand",
     "icon": "icon.png",
-    "url": "https://github.com/ClassIsland/classwidgets-plugin-classisland",
+    "url": "https://github.com/belugaQAQ/classisland_cw2",
     "branch": "main",
-    "update_date": "2025/01/29",
+    "update_date": "2026/08/30",
     "tag": "工具"
 }
