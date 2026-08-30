@@ -2,7 +2,7 @@
     "id": "com.classwidgets.classisland",
     "name": "ClassIsland",
     "description": "ClassIsland 是一款适用于班级多媒体屏幕的课表信息显示工具。",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "api_version": ">=0.6.0",
     "entry": "main.py",
     "author": "ClassIsBand",
